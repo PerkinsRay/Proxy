@@ -4,24 +4,85 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 
 
 
 public class http {
-	private int Content_Length=-1;
-	private String Transfer_Encoding="";
-	private String Host="";
-	private String Connection="";
-	private int header_length=-1;
-	private String content="";
-	private String header="";
+	
 	private boolean built=false;
-	private ArrayList<String> chunks=new ArrayList<String>();
-	private ByteBuffer builder= ByteBuffer.allocate(1000);
+	private int status=0;  //0:undetermined 1:header  2:content-length  3:chunked  4:complete 
+	private ArrayList<Packet> packet=new ArrayList<Packet>();
+	
+	private head h;
+	private string content;
+	private ByteBuffer buffer= ByteBuffer.allocate(1000);
 
 	
 
-	public int build(byte[] buffer) throws Exception{
+	public int build(byte[] data) throws Exception{
+		///////////////////////////////////////////
+		//PSEUDO
+		
+		
+		if status==0:
+			h.build_head ,//->  0,1 2 3 4
+			if 0:return 
+			if 1:buffer.put(data),status=1,return 1
+		    if 2:head_length=h.getheadlength,getcontentlength(),content=data[head_lenth:contentlength]
+		    		if buffer>contentlength+headlength: status=4;
+		    		if buffer<contentlength:status=2;
+		    if 3:builder_chunk
+		    
+		    if 4:headpacket 
+			
+		if status==1:
+			find "\r\n\r\n"
+			if exists: buffer.put(data[:"\r\n\r\n"])
+			   h.build_head(buffer)
+			   		if 2:
+			   		if 3:
+			   		if 4:
+			if not exists:return
+		
+		if status==2:data+buffer>contentlength:build content
+					else return
+		if status==3:buildcontent:data+buffer//chunk
+		
+		if status==4:packet+=1;clear in buffer;status=0;go to start;
+		
+		
+			
+			if so:
+					status=1;
+					h=this,header.build(buffer);
+					
+					
+				
+				ELSE RETURN;
+		
+					
+	   if  status==1:
+		   if builder.len>3: buffer-3 ->string,if "\r\n\r\n":  
+				
+		
+		builder.put(buffer);
+		String str=new String(builder.array());
+		
+		processing str....   -> set status;
+		
+		
+		if status==1: 是packet｛取出buffer，构建packet，packet.add（）｝
+		if status==2:	
+				
+		if status==4 ，是packet：{取出buffer，构建packet,packet.add();}
+		
+		
+		
+		return packet。length
+		
+		//////////////////////////////////////////
+		
 		try{
 			builder.put(buffer);
 			String str=new String(builder.array());
@@ -111,8 +172,6 @@ public class http {
 			String res=this.chunks.get(0);
 			this.chunks.remove(0);
 			return res;
-
-
 	}
 
 	public byte[] getheader(){
@@ -130,6 +189,13 @@ public class http {
 	
 	public static void main(String args[]) throws Exception{
 		String s="Accept:image/webp,*/*;q=0.8\r\nConnection:keep-alive\r\nHost:ww1.sinaimg.cn\r\nTransfer-Encoding:chunked\r\nAccept-Encoding:gzip,deflate,sdch\r\nAccept-Language:en-US,en;q=0.8\r\nCache-Control:max-age=0\r\nConnection:keep-alive\r\nHost:img.t.sinajs.cn\r\nIf-Modified-Since:Wed, 29 Oct 2014 08:58:53 GMT\r\nIf-None-Match:\"5450ac4d-e710\"\r\nReferer:http://weibo.com/u/1710751805/home?topnav=1&wvr=5\r\nUser-Agent:Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\n\r\n4\r\nxxxx\r\n3\r\nxxx\r\n1\r\nx\r\n0\r\n\r\n";
+		
+		StringReader sr=new StringReader(s);
+		BufferedReader br = new BufferedReader(sr);
+		
+		br.readLine();
+		
+		
 		http h=new http();
 		h.build(s.getBytes());
 		h.setConnection("alive");
@@ -141,4 +207,16 @@ public class http {
 		System.out.println(h.getchunk());
 
 	}
+	
+public class Packet{
+	private ArrayList<String[]> header_list=new ArrayList<String[]>();
+	private List<String> chunks=new ArrayList<String>();
+	//private String type=""; //POST GET HTTP.....
+	
+	
+
+
+}
+
+
 }
