@@ -21,7 +21,6 @@ public class http {
 
 	
 
-	
 	public int build(byte[] buffer) throws Exception{
 		try{
 			builder.put(buffer);
