@@ -20,7 +20,7 @@ public class http {
 	
 	private head head;
 	private Packet current_packet;
-	private String content;
+	private String content="";
 	private ByteBuffer buffer= ByteBuffer.allocate(1000);
 	String http_method[]={"HTTP/1.0","HTTP/1.1","GET","POST","HEAD","PUT","DELETE","TRACE","OPTIONS","PATCH","CONNECT"};
 	
@@ -63,7 +63,8 @@ public class http {
             // charBuffer = decoder.decode(buffer);//用这个的话，只能输出来一次结果，第二次显示为空  
 			CharBuffer charBuffer = decoder.decode(buffer.asReadOnlyBuffer()); 
 			str=charBuffer.toString();
-			//System.out.println(str);
+			
+			
 			
 			if(status==0){
 				if(str.length()<4){
@@ -87,8 +88,9 @@ public class http {
 			if(status==1){
 				
 				if(str.indexOf("\r\n\r\n")!=-1){
-					subs=str.substring(0,str.indexOf("\r\n\r\n"));
+					subs=str.substring(0,str.indexOf("\r\n\r\n")+4);
 					this.head=new head(subs);
+					//buffer.put(str.substring(str.indexOf("\r\n\r\n")+4,str.length()).getBytes());
 					
 					if(!(this.head.get("content-length").equals("none"))){
 						this.current_packet=new Packet(this.head,"");
@@ -96,6 +98,8 @@ public class http {
 					}
 					else if((this.head.get("transfer-encoding").toLowerCase().equals("chunked"))){
 						this.current_packet=new Packet(this.head,"");
+						//System.out.println(this.head.toSting());
+						
 						this.status=3;
 						
 					}
@@ -110,6 +114,7 @@ public class http {
 				}
 				else{
 					this.status=1;
+					buffer.put(str.getBytes());
 					return 0;
 				}
 			}
@@ -117,51 +122,76 @@ public class http {
 			if(status==2){
 				int content_length=Integer.parseInt(this.head.get("content-length").trim());
 				
-				subs=str.substring(str.indexOf("\r\n\r\n"),str.length());
-				buffer.position(str.indexOf("\r\n\r\n"));
+				if(this.content.length()!=0){
+					subs=str;
+				}
+				else{
+					subs=str.substring(str.indexOf("\r\n\r\n")+4,str.length());
+				}
+					
 				if(subs.length()>=content_length){
 					
 					this.current_packet=new Packet(this.head,subs.substring(0, content_length-1));
 					this.packet_list.add(this.current_packet);
-					buffer.position(buffer.position()-content_length);
+					buffer.put(subs.substring(content_length, subs.length()).getBytes());
 					return 1;
 				}
 				
 				else{
-					buffer.position(buffer.position()-subs.length());
+					this.content=subs;
+					buffer.clear();
 					return 0;
 				}
 			}
 			
 			if(status==3){
 				//str=new String(buffer.array());
+				String current_content="";
+				//System.out.println("----------\r\n"+str+"\r\n----------");
+				if(this.content.length()!=0){
+					current_content=str;
+				}
+				else{
+					current_content=str.substring(str.indexOf("\r\n\r\n")+4,str.length());
+				}
 				
-				String current_content=str.substring(str.indexOf("\r\n\r\n")+4,str.length());
+				//System.out.println("*"+current_content+"*");
+				
 				String tmp="";
-				buffer.position(str.indexOf("\r\n\r\n"));
 				
 				for(int i=0;i<=current_content.length();){
  				    tmp=current_content.substring(i,current_content.length());
  					String chunk_num=tmp.substring(0,tmp.indexOf("\r\n"));
- 					System.out.println(chunk_num);
+ 					//System.out.println(chunk_num);
  					int j=Integer.parseInt(chunk_num.trim())+chunk_num.length()+4;
  					
- 					System.out.println(i+" "+j+" "+current_content.length());
+ 					//System.out.println(i+" "+j+" "+current_content.length());
  					if((i+j)>current_content.length()){
- 						buffer.position(buffer.position()-current_content.length());
- 						return 0;}
+ 						//System.out.println("&&"+current_content.substring(i,current_content.length())+"%%");
+ 						buffer.clear();
+ 						buffer.put(current_content.substring(i,current_content.length()).getBytes());
+ 						//System.out.println("@@@@@@@@@@@");
+ 	 					this.content=current_content.substring(i,current_content.length());
+ 	 					//System.out.println(this.content);
+ 	 					
+ 						//.out.println("@@@@@@@@@@@");
+ 						return 0;
+ 						}
  					
  					if(Integer.parseInt(chunk_num.trim())!=0){
  						
+ 						//System.out.println(current_content.substring(i,i+j-1));
  						this.current_packet.add_chunk(current_content.substring(i,i+j-1));
- 						buffer.position(buffer.position()-i+j-1);
  					}
+ 					
  					else{
  						status=4;
- 						System.out.println("ge");
- 						this.current_packet.add_chunk("0");
- 						System.out.println("geqw");
+ 						this.current_packet.add_chunk("0\r\n\r\n");
+ 						
  						this.packet_list.add(current_packet);
+ 						//System.out.println(str.substring(i+j, str.length()));
+ 						this.content="";
+ 						buffer.put(str.substring(i+j, str.length()).getBytes());
  						return 1;
  					}
  					
@@ -189,27 +219,37 @@ public class http {
 
 	
 	public static void main(String args[]) throws Exception{
-		String s="HTTP/1.1 200 OK\r\nAccept:image/webp,*/*;q=0.8\r\nConnection:keep-alive\r\nHost:ww1.sinaimg.cn\r\nTransfer-Encoding:chunked\r\ni/537.36\r\n\r\n4\r\nxxxx\r\n3\r\nxxx\r\n1\r\nx\r\n0\r\n\r\n";
+		String s1="HTTP/1.1 200 OK\r\nAccept:image/webp,*/*;q=0.8\r\nConnection:keep-alive\r\nHost:ww1.sinaimg.cn\r\nTransfer-Encoding:chunked\r\ni/537.36\r\n\r\n4\r\nxx";
+		String s2="xx\r\n3\r\nxxx\r\n1\r\nx\r\n0\r\n\r\n";
 		
-		StringReader sr=new StringReader(s);
+		StringReader sr=new StringReader(s1);
 		BufferedReader br = new BufferedReader(sr);
 		
 		br.readLine();
 		
 		
 		http h=new http();
-		h.build(s.getBytes());
-		//h.build(s.getBytes());
-		//h.build(s.getBytes());
+		System.out.println(h.build(s1.getBytes()));
+		System.out.println(h.build(s2.getBytes()));
 		
 		System.out.println(h.get_packet().get_head().toSting());
+		System.out.println(h.get_packet().get_chunk());
+		
+				
+		//h.build(s.getBytes());
+		//h.build(s.getBytes());
+		
+		//System.out.println(h.get_packet().get_head().toSting());
 		
 		//System.out.println(h.build(s.getBytes()));
-		System.out.println(h.head.get("hoSt"));
-		System.out.println(h.head.get("transfer-encoding"));
+		//System.out.println("^"+new String(h.buffer.array())+"^");
+		//System.out.println("^"+h.content+"^");
+		//System.out.println(h.head.get("transfer-encoding"));
 		
 		//h.setConnection("alive");
 		
+		
+		 
 
 	}
 	
@@ -229,6 +269,11 @@ public class Packet{
 		chunks.add(chunk);	
 	}
 	
+	public String get_chunk(){
+		String tmp=chunks.get(0);
+		chunks.remove(0);
+		return tmp;
+	}
 	public head get_head(){
 		return this.head;
 	}
